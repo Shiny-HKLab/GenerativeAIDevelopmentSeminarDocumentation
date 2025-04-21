@@ -1,3 +1,5 @@
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Shiny-HKLab/GenerativeAIDevelopmentSeminarDocumentation/blob/main/section02-jsonplaceholder/notebook-colab.ipynb)
+
 ## はじめに
 
 前回はAPIの基本的な概念について学びました。今回は実際にPythonを使ってWebAPIにアクセスする方法を見ていきましょう。
@@ -238,7 +240,7 @@ requestsライブラリを使う際に発生する可能性のある主なエラ
    - 404 Not Found: リソースが見つからない
    - 500 Internal Server Error: サーバー内部エラー
 
-2. **接続エラー (ConnectionError)**: 
+2. **接続エラー (ConnectionError)**:
    - サーバーに接続できない
    - DNSエラー
    - ネットワーク接続の問題
@@ -263,19 +265,19 @@ try:
         'https://jsonplaceholder.typicode.com/invalid_endpoint',
         timeout=5  # タイムアウトを5秒に設定
     )
-    
+
     # ステータスコードのチェック
     response.raise_for_status()  # 4xx/5xxエラーの場合、例外を発生させる
-    
+
     # 正常なレスポンスの処理
     data = response.json()
     print("データの取得に成功しました。")
-    
+
 except requests.exceptions.HTTPError as err:
     # HTTPエラー（4xx/5xxステータスコード）
     print(f"HTTPエラー: {err}")
     print(f"ステータスコード: {response.status_code}")
-    
+
     # エラーコードに応じた処理
     if response.status_code == 404:
         print("リソースが見つかりませんでした。URLを確認してください。")
@@ -283,7 +285,7 @@ except requests.exceptions.HTTPError as err:
         print("認証が必要です。APIキーや認証情報を確認してください。")
     elif response.status_code == 429:
         print("リクエスト制限を超えました。しばらく待ってからリトライしてください。")
-    
+
 except requests.exceptions.ConnectionError as err:
     # 接続エラー（サーバーに接続できない）
     print(f"接続エラー: {err}")
@@ -291,7 +293,7 @@ except requests.exceptions.ConnectionError as err:
     print("- インターネット接続が正常か")
     print("- サーバーのURLが正しいか")
     print("- サーバーが稼働しているか")
-    
+
 except requests.exceptions.Timeout as err:
     # タイムアウトエラー
     print(f"タイムアウト: {err}")
@@ -299,12 +301,12 @@ except requests.exceptions.Timeout as err:
     print("- タイムアウト時間を長くする")
     print("- ネットワーク接続を確認する")
     print("- サーバーの負荷状況を確認する")
-    
+
 except requests.exceptions.RequestException as err:
     # その他のrequests関連エラー（上記以外の全てのrequestsエラーのベースクラス）
     print(f"リクエストエラー: {err}")
     print("APIリクエスト中に予期しないエラーが発生しました。")
-    
+
 except ValueError as err:
     # JSONデコードエラー
     print(f"JSONエラー: {err}")
@@ -345,10 +347,10 @@ except Exception as err:
 4. **ロギングを活用する**:
    ```python
    import logging
-   
+
    logging.basicConfig(level=logging.INFO)
    logger = logging.getLogger(__name__)
-   
+
    try:
        response = requests.get('https://example.com')
        response.raise_for_status()
@@ -471,7 +473,7 @@ OAuth2などで使われるBearer認証の例です。多くのモダンなAPI�
 import requests
 
 # アクセストークン（OAuth2認証などで取得）
-access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6..." 
+access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6..."
 
 # Bearer認証ヘッダーを設定
 headers = {
@@ -618,7 +620,7 @@ else:
            'Content-Type': 'application/json',
            'Accept': 'application/json'
        }
-       
+
    # 複数のリクエストで再利用
    headers = get_auth_headers(api_key)
    response1 = requests.get('https://api.example.com/endpoint1', headers=headers)
@@ -630,7 +632,7 @@ else:
    # requestsのSessionを使うと、ヘッダーやクッキーを複数リクエストで共有できる
    session = requests.Session()
    session.headers.update({'Authorization': f'Bearer {api_key}'})
-   
+
    # 同じセッション内の複数リクエスト
    response1 = session.get('https://api.example.com/endpoint1')
    response2 = session.post('https://api.example.com/endpoint2', json=data)
@@ -649,14 +651,14 @@ def get_user(user_id):
     """指定されたIDのユーザー情報を取得する"""
     # TODO: user_idを使って、JSONPlaceholderからユーザー情報を取得するGETリクエストを実装する
     # ヒント: エンドポイントは 'https://jsonplaceholder.typicode.com/users/{user_id}' 形式
-    
+
     # TODO: ステータスコードが200の場合、JSONレスポンスを返す。それ以外はNoneを返す
 
 def get_posts_by_user(user_id):
     """指定されたユーザーIDの投稿を取得する"""
     # TODO: クエリパラメータを使って、特定ユーザーの投稿を取得する
     # ヒント: paramsに適切なキーと値のペアを設定する
-    
+
     # TODO: GETリクエストを送信し、ステータスコードが200の場合はJSONレスポンスを返す
     # それ以外の場合は空のリストを返す
 
@@ -664,21 +666,21 @@ def display_user_with_posts(user_id):
     """ユーザー情報とその投稿を表示する"""
     # ユーザー情報の取得
     # TODO: get_user関数を呼び出してユーザー情報を取得する
-    
+
     # TODO: ユーザーが見つからない場合のエラーメッセージを表示して関数を終了する
-    
+
     # ユーザー情報の表示
     print(f"\n===== ユーザー情報 =====")
     print(f"名前: {user['name']}")
     print(f"ユーザー名: {user['username']}")
     print(f"メール: {user['email']}")
     print(f"会社: {user['company']['name']}")
-    
+
     # ユーザーの投稿を取得して表示
     # TODO: get_posts_by_user関数を呼び出してユーザーの投稿を取得する
-    
+
     print(f"\n===== {user['name']} の投稿 ({len(posts)}件) =====")
-    
+
     for i, post in enumerate(posts, 1):
         print(f"\n投稿 {i}:")
         print(f"タイトル: {post['title']}")
