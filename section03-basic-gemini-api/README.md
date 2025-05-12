@@ -1,385 +1,504 @@
-# PythonでGemini APIを実行してAIを動かす！ requestsと最新SDK (google-genai)、それぞれの方法を徹底解説
+# 初心者のためのGoogle Gen AI SDK入門
 
-生成AIの進化は目覚ましく、私たちの開発にAIの機能を組み込む機会も増えています。Googleが提供する高性能な大規模言語モデルであるGeminiも、そのAPIを利用することで、Pythonアプリケーションから手軽に操作できます。
+こんにちは！この記事では、プログラミング初心者の方に向けて、Google Gen AI SDKの使い方を優しく解説します。AIを使って文章を生成したり、チャットボットを作ったりする方法を学んでいきましょう。
 
-この記事では、「PythonでGemini APIを実行し、AIの応答をコンソールで出力させる」ことを目標に、以下の2つの方法を解説します。
+## 1. Google Gen AI SDKって何？
 
-1. Python標準ライブラリrequestsを使用して直接APIを呼び出す方法
-2. Google公式の最新Python SDK (google-genai) を利用する方法
+Google Gen AI SDKは、Googleが提供する人工知能（AI）のツールキットです。このツールキットを使うと、「Gemini」という高性能なAIモデルを自分のプログラムで簡単に使えるようになります。
 
-まずはAPIの基礎を理解するためにrequestsを使った方法を学び、その後に推奨される最新SDKを利用してより簡単に記述できる方法を見ていきます。それぞれのメリット・デメリットも比較し、状況に応じて最適な方法を選択できるようになりましょう。
+考えてみてください。友達と話したり、質問に答えてもらったり、物語を作ってもらったりするAIを、自分のプログラムに組み込めるとしたら、どんなことができるでしょうか？それを実現するのが、このSDKなのです。
 
-## 事前準備：APIキーの取得
+> 💡 **SDKとは？**
+> SDK（Software Development Kit）とは、ソフトウェアを開発するための道具箱のようなものです。プログラマーがアプリやサービスを作るときに便利な機能がまとまっています。
 
-Gemini APIを利用するには、APIキーが必要です。まだ取得していない場合は、以下の手順で取得してください。
+## 2. インストールと準備
 
-1. [Google AI Studio](https://aistudio.google.com/) にアクセスします。
-2. Googleアカウントでログインします。
-3. 左メニューの「Get API key」を選択します。
-4. 「Create API key in new project」をクリックすると、APIキーが生成されます。
+### インストール方法
 
-生成されたAPIキーは、後ほどコードで使用しますので控えておいてください。APIキーは重要な情報なので、公開したり、直接コードに埋め込んだりせず、環境変数などで管理することを強く推奨します。 今回の記事では解説の都合上コード内に記述する場合がありますが、実際の開発ではご注意ください。
-
-## 方法1：requestsライブラリでGemini APIを実行する
-
-まずは、PythonでHTTPリクエストを送信するための標準的なライブラリであるrequestsを使って、直接Gemini APIを呼び出してみましょう。この方法では、APIがどのように動作しているかの理解が深まります。
-
-### インストール
-
-requestsライブラリは、以下のコマンドでインストールできます。
-
-```bash
-pip install requests
-```
-
-### APIの呼び出し方
-
-Gemini APIのエンドポイントに対して、HTTP POSTリクエストを送信します。リクエストのURL、ヘッダー、ボディには、APIキー、使用するモデル、プロンプト（AIへの指示）などの情報を含めます。
-
-基本となるAPIエンドポイントは以下の形式です。
-
-```
-https://generativelanguage.googleapis.com/v1beta/models/{model-id}:generateContent
-```
-
-`{model-id}`には、使用したいGeminiモデルのID（例: gemini-pro）が入ります。APIキーは、URLのクエリパラメータとして`key=YOUR_API_KEY`の形式で渡します。
-
-リクエストボディはJSON形式で、以下のような構造になります。
-
-```json
-{
-  "contents": [
-    {
-      "parts": [
-        {
-          "text": "ここにプロンプトを入力"
-        }
-      ]
-    }
-  ]
-}
-```
-
-応答もJSON形式で返ってきます。生成されたテキストは、応答ボディの`candidates -> 最初の要素 -> content -> parts -> 最初の要素 -> text` の階層に格納されています。
-
-### 通常出力（バッチ処理）
-
-まずは、リクエストを送信して、応答がすべて返ってくるのを待つ通常出力の方法です。
-
-```python
-import requests
-import json
-import os # APIキーを環境変数から読み込む場合
-
-# あなたのAPIキーに置き換えてください（環境変数からの読み込みを推奨）
-# API_KEY = os.environ.get("YOUR_GEMINI_API_KEY")
-API_KEY = "YOUR_YOUR_GEMINI_API_KEY" # 直接記述する場合
-
-MODEL_ID = "gemini-pro"
-API_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent"
-
-def generate_text_batch_requests(prompt):
-    headers = {
-        'Content-Type': 'application/json',
-    }
-
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ]
-    }
-
-    params = {
-        'key': API_KEY
-    }
-
-    try:
-        response = requests.post(API_ENDPOINT, headers=headers, params=params, data=json.dumps(payload))
-        response.raise_for_status() # HTTPエラーがあれば例外を発生させる
-
-        response_data = response.json()
-
-        # 応答からテキストを抽出
-        if 'candidates' in response_data and response_data['candidates']:
-            first_candidate = response_data['candidates'][0]
-            if 'content' in first_candidate and 'parts' in first_candidate['content'] and first_candidate['content']['parts']:
-                first_part = first_candidate['content']['parts'][0]
-                if 'text' in first_part:
-                    return first_part['text']
-
-        return "応答からテキストを抽出できませんでした。"
-
-    except requests.exceptions.RequestException as e:
-        print(f"APIリクエスト中にエラーが発生しました: {e}")
-        return None
-    except json.JSONDecodeError:
-        print("応答のJSONパースに失敗しました。")
-        # エラー時の応答内容を確認する
-        if 'response' in locals() and response.text:
-             print("応答内容:", response.text)
-        return None
-    except Exception as e:
-        print(f"予期しないエラーが発生しました: {e}")
-        return None
-
-
-# 実行例
-prompt = "PythonでHTTPリクエストを送信する方法を教えてください。"
-print("--- requests バッチ出力 ---")
-generated_text = generate_text_batch_requests(prompt)
-if generated_text:
-    print(generated_text)
-```
-
-このコードでは、`requests.post`メソッドを使ってAPIにリクエストを送信し、返ってきたJSONデータをパースして、生成されたテキスト部分を取り出しています。`response.raise_for_status()`を使うことで、4xxや5xxのエラーレスポンスがあった場合に例外を発生させ、エラーハンドリングをしやすくしています。
-
-### ストリーミング出力（requests）
-
-大量のテキスト生成や、リアルタイムな応答表示を行いたい場合は、ストリーミング出力が便利です。APIがテキストを生成する傍から、少しずつ応答を受け取ることができます。
-
-requestsでストリーミングを行うには、`requests.post`の際に`stream=True`オプションを指定し、応答オブジェクトをイテレートします。Gemini APIのストリーミング応答は、一般的にServer-Sent Events (SSE) の形式に似ており、`data: `の後にJSONデータが続く形で送られてきます。各チャンク（断片）には、生成されたテキストの続きが含まれています。
-
-```python
-import requests
-import json
-import os
-
-# あなたのAPIキーに置き換えてください（環境変数からの読み込みを推奨）
-# API_KEY = os.environ.get("YOUR_GEMINI_API_KEY")
-API_KEY = "YOUR_YOUR_GEMINI_API_KEY" # 直接記述する場合
-
-MODEL_ID = "gemini-pro"
-# ストリーミング用のエンドポイントは通常出力と同じです
-API_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent"
-
-def generate_text_stream_requests(prompt):
-    headers = {
-        'Content-Type': 'application/json',
-    }
-
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ]
-    }
-
-    params = {
-        'key': API_KEY
-    }
-
-    print("\n--- requests ストリーミング出力 ---")
-    try:
-        # stream=True を指定してリクエストを送信
-        with requests.post(API_ENDPOINT, headers=headers, params=params, data=json.dumps(payload), stream=True) as response:
-            response.raise_for_status() # HTTPエラーがあれば例外を発生させる
-
-            # 応答を1行ずつ読み込み、'data:'で始まる行を処理
-            for line in response.iter_lines():
-                if line: # 空行をスキップ
-                    decoded_line = line.decode('utf-8')
-                    # SSE形式の 'data: ' を取り除く
-                    if decoded_line.startswith('data: '):
-                        json_data_str = decoded_line[len('data: '):].strip()
-                        if json_data_str:
-                            try:
-                                chunk_data = json.loads(json_data_str)
-
-                                # チャンクからテキスト部分を抽出して出力
-                                # ストリーミングチャンクもバッチ応答と似た構造を持つ
-                                if 'candidates' in chunk_data and chunk_data['candidates']:
-                                    first_candidate = chunk_data['candidates'][0]
-                                    if 'content' in first_candidate and 'parts' in first_candidate['content'] and first_candidate['content']['parts']:
-                                        first_part = first_candidate['content']['parts'][0]
-                                        if 'text' in first_part:
-                                            print(first_part['text'], end='', flush=True) # 逐次出力
-
-                            except json.JSONDecodeError:
-                                print(f"\nWarning: チャンクのJSONパースに失敗しました: {json_data_str}")
-                            except Exception as e:
-                                print(f"\nWarning: チャンク処理中に予期しないエラーが発生しました: {e}")
-
-            print("\n--- requests ストリーミング完了 ---") # 終了を示す
-
-    except requests.exceptions.RequestException as e:
-        print(f"\nAPIリクエスト中にエラーが発生しました: {e}")
-    except Exception as e:
-        print(f"\n予期しないエラーが発生しました: {e}")
-
-
-# 実行例
-prompt = "日本の首都について詳しく教えてください。"
-generate_text_stream_requests(prompt)
-```
-
-ストリーミング出力では、`response.iter_lines()`を使って応答を一行ずつ読み込みます。各行が`data:`で始まる場合は、その後のJSONデータをパースし、テキスト部分を取り出してすぐにコンソールに出力しています。`end=''`と`flush=True`を指定することで、改行せずに逐次表示されるようにしています。この手動でのパース処理が必要になる点が、SDKとの大きな違いです。
-
-### requestsを使うメリット・デメリット
-
-**メリット:**
-
-- Python標準ライブラリとrequestsだけで実装できるため、外部ライブラリへの依存が少ない。
-- APIの生のリクエスト・レスポンスを確認できるため、APIの動作原理の理解が深まる。
-- 細かなHTTPリクエストの設定（タイムアウト、プロキシなど）を直接制御できる。
-
-**デメリット:**
-
-- リクエストURLの構築、JSONボディの作成、応答のパース、エラーハンドリングなど、APIの仕様に合わせて自分で記述する必要がある。
-- 特にストリーミング応答の解析（`data:`の除去、JSONパース）が煩雑になりがち。
-- APIのバージョンアップや仕様変更があった場合、コードの修正が必要になる可能性が高い。
-- 会話履歴の管理、埋め込み生成、安全設定などの高度な機能を利用する際に、すべて自分で実装する必要がある。
-
-## 方法2：Google公式最新Python SDK (google-genai) でGemini APIを実行する
-
-Googleが提供している公式の最新Python SDK (google-genai) を利用すると、APIへのアクセスが非常に簡単になります。SDKはAPIの複雑な部分を抽象化し、Pythonオブジェクトとして操作できるように設計されています。
-
-> **注意**: 以前の google-generativeai ライブラリは非推奨となりました。今後は google-genai を使用してください。
-
-### インストール
-
-最新SDKは以下のコマンドでインストールできます。
+Google Gen AI SDKをインストールするのは、とても簡単です。コマンドプロンプトやターミナルで、以下のコマンドを実行するだけです。
 
 ```bash
 pip install google-genai
 ```
 
-### APIの呼び出し方
+これで、必要なファイルがパソコンにダウンロードされ、Pythonから使えるようになります。
 
-SDKを使用する場合、まずAPIキーを設定し、次に利用したいモデルを指定してインスタンスを作成します。プロンプトを渡すだけで、テキスト生成などの操作が直感的に行えます。
+### APIキーの取得
 
-```python
-import genai # google-genai ライブラリは genai という名前でインポートします
-import os
+AIを使うには、「APIキー」というパスワードのようなものが必要です。これは、あなたがGoogleのAIサービスを利用する権利があることを証明するものです。
 
-# あなたのAPIキーに置き換えてください（環境変数からの読み込みを推奨）
-# 環境変数 GOOGLE_API_KEY に設定する方法が推奨されます
-# API_KEY = os.environ.get("GOOGLE_API_KEY")
-API_KEY = "YOUR_YOUR_GEMINI_API_KEY" # 直接記述する場合
+1. [Google AI Studioのウェブサイト](https://aistudio.google.com/)にアクセスします
+2. Googleアカウントでログインします
+3. 「APIキーを取得」または「Get API Key」というボタンを探して、クリックします
+4. 表示されたAPIキーをメモしておきます（他の人には教えないでください！）
 
-# APIキーを設定
-# 環境変数 GOOGLE_API_KEY が設定されていれば省略可能
-genai.configure(api_key=API_KEY)
+### 基本的なセットアップ
 
-# 使用するモデルを指定してGenerativeModelインスタンスを作成
-model = genai.GenerativeModel('gemini-pro')
-
-def generate_text_batch_sdk(prompt):
-    try:
-        # テキスト生成を実行（バッチ）
-        response = model.generate_content(prompt)
-
-        # 応答からテキストを抽出
-        # SDKは通常、生成されたテキストをresponse.textで取得できます
-        # ただし、安全フィルタに引っかかった場合などはエラーや空になる可能性あり
-        if response.text:
-            return response.text
-        else:
-            # テキストが生成されなかった場合の診断情報を表示
-            print("\nテキストが生成されませんでした。詳細:")
-            if response.prompt_feedback:
-                print("  プロンプトフィードバック:", response.prompt_feedback)
-            if response.candidates:
-                print("  候補:", response.candidates)
-            return "テキスト生成に失敗したか、内容がブロックされました。"
-
-
-    except Exception as e:
-        print(f"SDKでのバッチAPIリクエスト中にエラーが発生しました: {e}")
-        return None
-
-# 実行例
-prompt = "世界の三大珍味は何ですか？"
-print("\n--- SDK (`google-genai`) バッチ出力 ---")
-generated_text = generate_text_batch_sdk(prompt)
-if generated_text:
-    print(generated_text)
-```
-
-SDKを使うと、わずか数行のコードでテキスト生成が実行できることがわかります。応答オブジェクト(`response`)には、生成されたテキスト以外にも、安全性に関する情報(`prompt_feedback`, `candidates[i].safety_ratings`)などが含まれており、これらも簡単にアクセスできます。`response.text`で生成されたテキスト部分に直接アクセスできるのが便利です。テキストが生成されなかった（例えば安全設定でブロックされた）場合なども考慮したエラーハンドリングを追加しています。
-
-APIキーは、`genai.configure(api_key=API_KEY)` で設定するか、環境変数 `GOOGLE_API_KEY` に設定しておくことでも自動的に読み込まれます。
-
-### ストリーミング出力（SDK google-genai）
-
-SDKでもストリーミング出力は非常に簡単です。`generate_content`メソッドに`stream=True`引数を追加し、返ってきた応答オブジェクトを`for`ループで回すだけです。
+さあ、最初のプログラムを書いてみましょう。まずは、Google Gen AI SDKをインポートして、APIキーを設定します。
 
 ```python
-import genai # google-genai ライブラリは genai という名前でインポートします
-import os
-
-# あなたのAPIキーに置き換えてください（環境変数からの読み込みを推奨）
-# 環境変数 GOOGLE_API_KEY に設定する方法が推奨されます
-# API_KEY = os.environ.get("GOOGLE_API_KEY")
-API_KEY = "YOUR_YOUR_GEMINI_API_KEY" # 直接記述する場合
+from google import genai
 
 # APIキーを設定
-# 環境変数 GOOGLE_API_KEY が設定されていれば省略可能
-genai.configure(api_key=API_KEY)
-
-# 使用するモデルを指定してGenerativeModelインスタンスを作成
-model = genai.GenerativeModel('gemini-pro')
-
-def generate_text_stream_sdk(prompt):
-    print("\n--- SDK (`google-genai`) ストリーミング出力 ---")
-    try:
-        # テキスト生成を実行（ストリーミング）
-        response = model.generate_content(prompt, stream=True)
-
-        # 応答オブジェクトをイテレートして、チャンクを順次出力
-        # SDKはストリーミングチャンクからtext属性で簡単にアクセスできる
-        for chunk in response:
-            if chunk.text:
-                 print(chunk.text, end='', flush=True)
-
-        print("\n--- SDK (`google-genai`) ストリーミング完了 ---") # 終了を示す
-
-    except Exception as e:
-        print(f"\nSDKでのストリーミングAPIリクエスト中にエラーが発生しました: {e}")
-        # ストリーミングの場合、エラー情報はイテレーション中に発生する可能性がある
-        # 終了後にresponseオブジェクトを確認することも可能だが、リアルタイムのエラーハンドリングは別途検討
-        # if response.prompt_feedback: print("プロンプトフィードバック:", response.prompt_feedback)
-
-
-# 実行例
-prompt = "夕食のメニューについて提案をいくつかください。"
-generate_text_stream_sdk(prompt)
+genai.Client(api_key='ここにあなたのAPIキーを入力してください')
 ```
 
-SDKのストリーミングは、requestsでの実装と比較して、はるかにシンプルです。応答オブジェクトがイテラブルになっており、`for`ループで回すだけで各チャンクのテキスト部分にアクセスできます。内部的には、requestsを使った場合と同様にHTTPストリームを処理し、JSONをパースしてくれています。
+別の方法として、環境変数に設定する方法もあります。
 
-## requestsとSDK (google-genai) の比較
+```bash
+# Windowsの場合
+set GOOGLE_API_KEY=あなたのAPIキー
 
-| 項目 | requestsライブラリ | Python SDK (google-genai) |
-|------|-------------------|--------------------------|
-| 実装の容易さ | 低い（手動でHTTPリクエストを構築・解析） | 高い（直感的で簡単なAPI呼び出し） |
-| コード量 | 多い | 少ない |
-| API理解 | 深い（HTTPリクエスト・レスポンスを直接扱う） | 浅い（抽象化されている） |
-| ストリーミング | 手動での応答解析（data:処理、JSONパース）が必要 | SDKが自動的に処理し、イテレートするだけ |
-| エラーハンドリング | 手動でHTTPステータスコードや応答ボディを確認する必要あり | SDKに組み込まれたエラー処理や、応答オブジェクトからの情報取得が容易 |
-| 機能 | 基本的なAPI呼び出しのみ | 会話履歴管理、安全設定、埋め込み、ファンクションコーリングなど高度な機能をサポート |
-| メンテナンス | API仕様変更の影響を受けやすい | SDKの更新で対応されることが多い |
-| 依存関係 | requestsのみ（比較的少ない） | google-genai SDKへの依存が発生 |
-| 推奨度 | APIの仕組み理解や特殊な用途向け | 推奨（Google公式の推奨ライブラリ） |
+# MacやLinuxの場合
+export GOOGLE_API_KEY=あなたのAPIキー
+```
 
-## まとめ
+そして、Pythonでは次のように書きます。
 
-この記事では、PythonからGemini APIを使ってAIと連携する方法を、requestsライブラリと最新の公式SDK (google-genai) の両面から解説しました。
+```python
+from google import genai
 
-requestsを使った方法は、APIの基本的な仕組みを理解するのに役立ち、細かい制御が可能ですが、実装の手間がかかります。特にストリーミング処理は、応答形式に合わせて丁寧にコードを書く必要があります。
+# 環境変数からAPIキーを取得
+client = genai.Client()
+```
 
-一方、公式Python SDK (google-genai) を使う方法は、APIの複雑さを吸収してくれるため、コードが非常にシンプルで分かりやすくなります。テキスト生成だけでなく、会話履歴の管理や安全設定などの高度な機能も容易に扱えます。また、公式ライブラリとして継続的にメンテナンスされ、APIの更新にも追従していくことが期待できます。
+これで、Google Gen AI SDKを使う準備が整いました！
 
-特別な理由がない限り、Gemini APIを利用したPython開発では公式Python SDK (google-genai) を使用することを強く推奨します。 より少ないコードで、堅牢かつ機能豊富なアプリケーションを開発できます。しかし、APIの挙動を深く理解したい場合や、SDKに依存したくない特定の要件がある場合には、requestsで直接APIを呼び出す方法も有効な選択肢となります。
+## 3. テキスト生成の基本
 
-これらの知識を元に、ぜひPythonアプリケーションにGeminiの強力なAI機能を組み込んでみてください。
+### シンプルなテキスト生成
+
+最初に挑戦するのは、AIに文章を生成してもらうことです。例えば、「空が青い理由」について説明してもらいましょう。
+
+```python
+from google import genai
+
+# クライアントを作成
+client = genai.Client(api_key='あなたのAPIキー')
+
+# AIに質問する
+response = client.models.generate_content(
+    model='gemini-2.0-flash-001',  # 使用するAIモデル
+    contents='空が青い理由を教えてください'  # AIへの指示
+)
+
+# 結果を表示
+print(response.text)
+```
+
+**出力例：**
+```
+空が青い理由は「レイリー散乱」という現象によるものです。太陽の光は、さまざまな色（波長）の光が混ざっています。この光が地球の大気中の分子にぶつかると、短い波長の光（青色や紫色）ほど強く散乱されます。
+
+青色光は紫色光よりも私たちの目に感じやすく、また大気中の散乱も多いため、空を見上げると青く見えるのです。これが空が青く見える主な理由です。
+
+夕焼けが赤く見えるのは、太陽光が大気中を通る距離が長くなり、青色光がほとんど散乱されてしまい、散乱されにくい赤色光だけが残るためです。
+```
+
+このコードを実行すると、AIが「空が青い理由」について説明してくれます。すごいですね！
+
+> 💡 **モデルとは？**
+> ここでの「モデル」とは、AIの種類や能力のことです。例えば「gemini-2.0-flash-001」は、速度を重視したAIモデルです。用途に応じて、より賢い「gemini-2.0-pro-001」などを選ぶこともできます。
+
+### もう少し複雑な例
+
+AIに物語を作ってもらうこともできます。
+
+```python
+from google import genai
+
+client = genai.Client(api_key='あなたのAPIキー')
+
+response = client.models.generate_content(
+    model='gemini-2.0-flash-001',
+    contents='猫と犬が友達になる短い物語を書いてください'
+)
+
+print(response.text)
+```
+
+**出力例：**
+```
+# 違いを超えて
+
+ミケは裏庭の塀の上でのんびりと日向ぼっこをしていました。この家に越してきて一週間。まだ周りの環境に慣れていない彼女は、警戒心を抱きながらも、新しい縄張りを探検していました。
+
+そんなある日、隣の家から元気な吠え声が聞こえてきました。「ワン！ワン！」
+
+塀の向こう側には、茶色い大きな犬が尻尾を振りながら立っていました。ミケは背中の毛を逆立て、シャーッと威嚇しました。
+
+「こんにちは！僕の名前はパックだよ。君は新しい隣人なんだね！」犬は友好的に言いました。
+
+最初はお互いに距離を保っていた二匹でしたが、日が経つにつれ、塀越しの会話が増えていきました。パックはミケに公園での冒険について話し、ミケはパックに木登りのコツを教えました。
+
+ある雨の日、ミケは雨宿りをしようと急いでいたところ、水たまりに足を取られて転んでしまいました。困っていると、パックが駆けつけ、自分の体で雨をさえぎり、ミケを家まで送り届けました。
+
+それ以来、二匹は種族の違いを超えた親友になりました。日向ぼっこをするときも、お昼寝をするときも、いつも一緒。ミケとパックは、友情に境界線がないことを、ご近所中に証明して見せたのでした。
+```
+
+このように、AIにさまざまな指示を出すことができます。例えば、レシピの提案、問題の解決方法、プログラミングのコード例など、多くのことをAIに頼むことができます。
+
+## 4. 従来のrequestsライブラリとの比較
+
+Google Gen AI SDKの便利さを理解するために、従来のrequestsライブラリを使う方法と比較してみましょう。
+
+### requestsライブラリでの実装
+
+```python
+import requests
+import json
+
+# APIキー
+api_key = 'あなたのAPIキー'
+
+# APIエンドポイント
+url = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-001:generateContent'
+
+# ヘッダー
+headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+}
+
+# リクエストボディ
+data = {
+    'contents': [
+        {
+            'parts': [
+                {
+                    'text': '空が青い理由を教えてください'
+                }
+            ]
+        }
+    ]
+}
+
+# リクエストを送信
+response = requests.post(
+    f'{url}?key={api_key}',
+    headers=headers,
+    data=json.dumps(data)
+)
+
+# レスポンスを処理
+if response.status_code == 200:
+    response_json = response.json()
+    try:
+        print(response_json['candidates'][0]['content']['parts'][0]['text'])
+    except (KeyError, IndexError):
+        print('テキストの取得に失敗しました')
+else:
+    print(f'エラー: {response.status_code}')
+    print(response.text)
+```
+
+### Google Gen AI SDKでの実装
+
+```python
+from google import genai
+
+# クライアントを作成
+client = genai.Client(api_key='あなたのAPIキー')
+
+# AIに質問する
+response = client.models.generate_content(
+    model='gemini-2.0-flash-001',
+    contents='空が青い理由を教えてください'
+)
+
+# 結果を表示
+print(response.text)
+```
+
+### 比較からわかること
+
+1. **コードの量**: Google Gen AI SDKを使うと、コードがとても短くなります！
+2. **わかりやすさ**: 複雑なJSON構造やHTTPリクエストの詳細を気にする必要がありません
+3. **エラー処理**: SDKには便利なエラー処理機能が組み込まれています
+4. **機能の充実**: ストリーミングやチャットなど、高度な機能が簡単に使えます
+
+SDKを使うと、AI関連の複雑な処理を簡単なコード数行で実現できるので、初心者の方にもおすすめです！
+
+## 5. 設定パラメータの概要
+
+AIの出力をより細かく制御したい場合は、「設定パラメータ」を使います。これは、AIがどのように応答するかを調整する方法です。
+
+### 温度（Temperature）
+
+「温度」は、AIの創造性を調整するパラメータです。値が低いと（0に近いと）予測可能で安定した回答になり、値が高いと（1に近いと）より創造的でバラエティに富んだ回答になります。
+
+```python
+from google import genai
+from google.genai import types
+
+client = genai.Client(api_key='あなたのAPIキー')
+
+# 温度を0.3に設定（安定した回答）
+response = client.models.generate_content(
+    model='gemini-2.0-flash-001',
+    contents='面白い冗談を1つ教えてください',
+    config=types.GenerateContentConfig(
+        temperature=0.3,
+    ),
+)
+
+print(response.text)
+```
+
+**出力例（temperature=0.3）:**
+```
+なぜプログラマーはメガネをかけるのでしょうか？
+
+セミコロン（;）が見えないからです！
+```
+
+同じ質問でも温度を変えると...
+
+```python
+# 温度を0.9に設定（創造的な回答）
+response = client.models.generate_content(
+    model='gemini-2.0-flash-001',
+    contents='面白い冗談を1つ教えてください',
+    config=types.GenerateContentConfig(
+        temperature=0.9,
+    ),
+)
+
+print(response.text)
+```
+
+**出力例（temperature=0.9）:**
+```
+私の冷蔵庫が最近、ある物を欲しがっているんです。
+
+「それは何？」と友達が聞きました。
+
+私は答えました。「よくわからないんだ。でもドアにずっとメモが貼ってあって『ミルクを買ってきて』って書いてあるんだよ」
+```
+
+### 最大出力トークン数
+
+AIの回答の長さを制限したい場合は、「max_output_tokens」を設定します。
+
+```python
+response = client.models.generate_content(
+    model='gemini-2.0-flash-001',
+    contents='春について詳しく説明してください',
+    config=types.GenerateContentConfig(
+        max_output_tokens=50,  # 約50単語の回答に制限
+    ),
+)
+
+print(response.text)
+```
+
+**出力例：**
+```
+春は四季の中で冬と夏の間にある季節です。温度が上昇し始め、植物が新しい生命を育み始める時期です。多くの植物が芽吹き、花が咲き始め、鮮やかな色彩で世界を彩ります。
+```
+
+### システム指示（System Instruction）
+
+AIに特定の役割や振る舞いを指示したい場合は、「system_instruction」を使います。
+
+```python
+response = client.models.generate_content(
+    model='gemini-2.0-flash-001',
+    contents='ピザの作り方を教えてください',
+    config=types.GenerateContentConfig(
+        system_instruction='あなたはプロのイタリアンシェフです。料理の説明をするときは、専門的なアドバイスも含めてください。',
+    ),
+)
+
+print(response.text)
+```
+
+**出力例：**
+```
+# 本格ピザの作り方
+
+## 生地（パスタ・マードレ）
+- 強力粉（タイプ00が理想的）: 500g
+- 水（常温）: 300ml
+- 塩: 小さじ1
+- ドライイースト: 5g
+- オリーブオイル（エクストラバージン）: 大さじ1
+
+## ソース（スーゴ）
+- サンマルツァーノトマト（缶詰）: 400g
+- にんにく: 2片
+- バジリコ（フレッシュ）: 数枚
+- オリーブオイル: 大さじ2
+- 塩: 小さじ1/2
+
+## 手順
+
+### 生地作り（一晩前の準備が理想的）
+1. ボウルに強力粉を入れ、中央に窪みを作ります。
+2. 水にイーストを溶かし、少しずつ粉に加えながら混ぜていきます。
+3. 塩とオリーブオイルを加え、滑らかになるまで10分ほど捏ねます。
+4. **プロの技**: 生地を伸ばして折りたたむ動作を繰り返すことで、グルテンネットワークが発達し、弾力のある生地になります。
+5. ボウルに戻し、湿らせた布をかけて、室温で2時間、または冷蔵庫で8〜24時間発酵させます。
+6. **重要**: 長時間の低温発酵がナポリピッツァの風味を生み出す秘訣です。
+
+### ソース作り
+1. オリーブオイルでみじん切りにしたにんにくを弱火で香りが出るまで炒めます。
+2. トマトを手で潰しながら加え、弱火で20分ほど煮詰めます。
+3. **プロの技**: トマトソースは濃厚すぎると焼いたときに焦げやすくなるので、やや水分を残しておきましょう。
+4. 最後に刻んだバジリコと塩で味を調えます。
+
+### 仕上げと焼成
+1. 発酵した生地を打ち粉をした台の上で、外側から中心に向かって優しく押し広げます。
+2. **プロの技**: 生地を伸ばす際は、中央を薄く、外側をやや厚めに残すと、エッジが美しく膨らみます（コルニチョーネ）。
+3. ソースを薄く塗り、モッツァレラチーズをちぎって散らします。
+4. 最高温度に予熱したオーブン（家庭用なら250℃以上）で6〜8分焼きます。
+5. **理想的環境**: 本格的なピッツァには450℃以上の石窯が理想的です。家庭では、ピザストーンを使用すると熱伝導が良くなります。
+
+出来立てのピッツァには、フレッシュバジリコの葉と高品質のエクストラバージンオリーブオイルを少量かけて香りを引き立てましょう。真のナポリピッツァは中心が少し柔らかく、エッジは香ばしいのが特徴です。
+
+Buon appetito!
+```
+
+これらのパラメータを組み合わせることで、AIの応答をより自分の目的に合ったものにすることができます。
+
+## 6. チャットボットの作成
+
+単発の質問だけでなく、会話を続けるチャットボットを作ることもできます。これには「チャットセッション」を使います。
+
+### チャットセッションの作成
+
+```python
+from google import genai
+
+client = genai.Client(api_key='あなたのAPIキー')
+
+# チャットセッションを作成
+chat = client.chats.create(model='gemini-2.0-flash-001')
+
+# 最初のメッセージを送信
+response = chat.send_message('こんにちは！あなたは誰ですか？')
+print(f"AI: {response.text}")
+
+# 会話を続ける
+response = chat.send_message('私の趣味について質問してください')
+print(f"AI: {response.text}")
+
+# ユーザーの回答
+response = chat.send_message('私は読書と料理が好きです')
+print(f"AI: {response.text}")
+```
+
+**出力例：**
+```
+AI: こんにちは！私はGeminiという人工知能アシスタントです。Googleによって開発されました。何かお手伝いできることはありますか？
+
+AI: どのような本を読むのが好きですか？また、得意な料理や最近作って美味しかった料理はありますか？
+
+AI: 読書と料理、素晴らしい趣味をお持ちですね！
+
+読書については、どんなジャンルの本を好まれますか？小説、ノンフィクション、自己啓発など、特に好きなジャンルや作家さんはいますか？最近読んだ中で印象に残った本があれば、ぜひ教えてください。
+
+料理に関しては、和食、洋食、中華など、特に得意なジャンルはありますか？自分だけの秘伝のレシピなどもあったら面白いですね。また、新しいレシピに挑戦することは好きですか？
+
+もし良ければ、あなたのお気に入りの本と料理のレシピを教えていただけると嬉しいです。それに基づいて、あなたが興味を持ちそうな本や試してみたいレシピをご提案することもできますよ。
+```
+
+このように、チャットセッションを作ることで、AIとの会話の文脈（前後関係）を保持しながら対話を続けることができます。例えば、「それはいいですね」と言った場合、AIは前の会話を覚えているので、何が「いい」のかを理解できます。
+
+## 7. ストリーミング応答
+
+長い回答をAIから受け取る場合、完全な回答が返ってくるまで待つのではなく、文章が生成されるたびに少しずつ表示する「ストリーミング」という方法があります。これを使うと、ユーザーの待ち時間の体感が短くなります。
+
+### テキストのストリーミング
+
+```python
+from google import genai
+
+client = genai.Client(api_key='あなたのAPIキー')
+
+# ストリーミングを使用
+for chunk in client.models.generate_content_stream(
+    model='gemini-2.0-flash-001',
+    contents='日本の四季について100字程度で説明してください'
+):
+    print(chunk.text, end='')  # 生成されたテキストを即時表示
+```
+
+**出力例（徐々に表示されます）:**
+```
+日本の四季は、それぞれ特徴的な美しさを持っています。
+
+春は桜が咲き誇り、国中がピンク色に彩られます。
+夏は蒸し暑いながらも、蝉の声や花火大会が夏の風物詩となります。
+秋は紅葉が山々を赤や黄色に染め、収穫の季節を迎えます。
+冬は北部では雪景色が広がり、温泉や雪祭りが人々を楽しませます。
+
+この四季の変化は、日本の文化や芸術にも大きな影響を与えてきました。
+```
+
+実行すると、AIが考えた回答が、少しずつ画面に表示されていきます。まるで、誰かがリアルタイムでタイピングしているように見えますね！
+
+### チャットでのストリーミング
+
+チャットでもストリーミングを使うことができます。
+
+```python
+from google import genai
+
+client = genai.Client(api_key='あなたのAPIキー')
+
+# チャットセッションを作成
+chat = client.chats.create(model='gemini-2.0-flash-001')
+
+# ストリーミングを使った会話
+for chunk in chat.send_message_stream('宇宙について教えてください'):
+    print(chunk.text, end='')
+```
+
+**出力例（徐々に表示されます）:**
+```
+宇宙は、私たちが知る限り最大の空間であり、すべての物質、エネルギー、時間、そして空間を含む広大な領域です。現在の科学的理解によれば、宇宙は約138億年前のビッグバンから始まったとされています。
+
+宇宙は絶えず膨張しており、その大きさは想像を超えています。観測可能な宇宙の直径は約930億光年と推定されていますが、実際の宇宙はそれよりもはるかに大きいかもしれません。
+
+宇宙には数千億の銀河があり、それぞれの銀河には数千億の星が存在します。私たちの太陽系は、天の川銀河という渦巻銀河の一部です。
+
+宇宙の大部分はダークエネルギー（約68%）とダークマター（約27%）で構成されており、私たちが通常目にする物質は宇宙全体のわずか5%程度にすぎません。
+
+宇宙は常に変化しており、星の誕生と死、銀河の衝突、ブラックホールの形成など、壮大なスケールのイベントが絶えず起こっています。
+
+宇宙についてさらに詳しく知りたい特定のトピックはありますか？例えば、太陽系、ブラックホール、宇宙の起源などについてお話しすることができます。
+```
+
+ストリーミングは、特に長い説明や物語を生成する場合に便利です。ユーザーはAIが考えている途中経過を見ることができるので、より自然な対話感が生まれます。
+
+## 8. 次のステップ
+
+この記事では、Google Gen AI SDKの基本的な使い方を学びました。次回の記事では、以下のような発展的なトピックについて詳しく解説する予定です：
+
+- **画像の説明** - AIに画像を見せて内容を説明してもらう方法
+- **構造化出力** - AIの回答をJSON形式などで取得する方法
+- **ツールの使用** - AIに特定の関数を呼び出してもらう方法（Function Calling）
+
+これらの機能を使うことで、AIの可能性がさらに広がります。ぜひ次回の記事もお楽しみに！
+
+## 9. まとめ
+
+この記事では、Google Gen AI SDKの基本的な使い方を学びました。
+
+- インストール方法とAPIキーの設定
+- シンプルなテキスト生成
+- 従来のrequestsライブラリとの比較
+- 設定パラメータでAIの応答をカスタマイズする方法
+- チャットボットの作成
+- ストリーミング応答で即時表示する方法
+
+AIは日々進化しており、できることも増えています。ぜひこの基本をマスターして、自分だけのAIアプリケーションを作ってみてください！
+
+何か質問があれば、ぜひコメントしてくださいね。楽しいAIの旅をお祈りします！
+
+## 参考リンク
+
+- [Google Gen AI SDK 公式ドキュメント](https://googleapis.github.io/python-genai/)
+- [Gemini Developer API ドキュメント](https://ai.google.dev/gemini-api/docs)
+- [Google AI Studio](https://aistudio.google.com/)
