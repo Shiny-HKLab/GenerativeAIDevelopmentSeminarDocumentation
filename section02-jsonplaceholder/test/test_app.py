@@ -1,5 +1,5 @@
 # from app import get_user
-from solution.app import get_user
+from solution.exercise_1 import get_user
 
 def test_get_user():
     user = get_user(1)
