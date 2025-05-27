@@ -1,6 +1,8 @@
-# 初心者のためのGoogle Gen AI SDK入門
+# Google Gen AI SDK入門
 
-こんにちは！この記事では、プログラミング初心者の方に向けて、Google Gen AI SDKの使い方を優しく解説します。AIを使って文章を生成したり、チャットボットを作ったりする方法を学んでいきましょう。
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Shiny-HKLab/GenerativeAIDevelopmentSeminarDocumentation/blob/main/section03-basic-gemini-api/notebook.ipynb)
+
+このセクションでは、プログラミング初心者の方に向けて、Google Gen AI SDKの使い方を優しく解説します。AIを使って文章を生成したり、チャットボットを作ったりする方法を学んでいきましょう。
 
 ## 1. Google Gen AI SDKって何？
 
