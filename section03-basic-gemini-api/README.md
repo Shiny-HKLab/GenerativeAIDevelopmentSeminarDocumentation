@@ -1,8 +1,7 @@
-# Google Gen AI SDK入門
-
+# 初心者のためのGoogle Gen AI SDK入門
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Shiny-HKLab/GenerativeAIDevelopmentSeminarDocumentation/blob/main/section03-basic-gemini-api/notebook.ipynb)
 
-このセクションでは、プログラミング初心者の方に向けて、Google Gen AI SDKの使い方を優しく解説します。AIを使って文章を生成したり、チャットボットを作ったりする方法を学んでいきましょう。
+このセクションでは、Google Gen AI SDKの使い方を解説します。AIを使って文章を生成したり、チャットボットを作ったりする方法を学んでいきましょう。
 
 ## 1. Google Gen AI SDKって何？
 
@@ -38,12 +37,16 @@ AIを使うには、「APIキー」というパスワードのようなものが
 
 さあ、最初のプログラムを書いてみましょう。まずは、Google Gen AI SDKをインポートして、APIキーを設定します。
 
+#### 直接APIキーを設定する方法
+
 ```python
 from google import genai
 
 # APIキーを設定
-genai.Client(api_key='ここにあなたのAPIキーを入力してください')
+client = genai.Client(api_key='ここにあなたのAPIキーを入力してください')
 ```
+
+#### 環境変数の設定（ローカル環境の場合）
 
 別の方法として、環境変数に設定する方法もあります。
 
@@ -64,6 +67,33 @@ from google import genai
 client = genai.Client()
 ```
 
+#### 環境変数の設定（Google Colabの場合）
+
+Google Colabを使用する場合は、以下の手順でAPIキーを安全に設定できます：
+
+1. Google ColabのシークレットタブからGoogle APIキーの「Google AI Studioでキーを管理」という項目をクリックしてGemini APIキーの管理画面に移動します
+2. 管理画面から「APIキーの作成」を行い、APIキーを追加します
+3. Google Colabに戻り、シークレットタブからGoogle APIキーの「Google AI Studioからキーをインポート」をクリックして先ほど追加したAPIキーを選択します
+4. シークレットタブに「GOOGLE_API_KEY」という名前が追加されているのを確認したら以下のセルを実行し、エラーが発生しないことを確認してください
+
+```python
+from google.colab import userdata
+
+GOOGLE_API_KEY = userdata.get("GOOGLE_API_KEY")
+assert GOOGLE_API_KEY is not None
+```
+
+その後、以下のようにクライアントを作成します：
+
+```python
+from google import genai
+from google.colab import userdata
+
+# Google ColabのシークレットからAPIキーを取得
+api_key = userdata.get("GOOGLE_API_KEY")
+client = genai.Client(api_key=api_key)
+```
+
 これで、Google Gen AI SDKを使う準備が整いました！
 
 ## 3. テキスト生成の基本
@@ -80,7 +110,7 @@ client = genai.Client(api_key='あなたのAPIキー')
 
 # AIに質問する
 response = client.models.generate_content(
-    model='gemini-2.0-flash-001',  # 使用するAIモデル
+    model='gemini-2.0-flash',  # 使用するAIモデル
     contents='空が青い理由を教えてください'  # AIへの指示
 )
 
@@ -100,7 +130,7 @@ print(response.text)
 このコードを実行すると、AIが「空が青い理由」について説明してくれます。すごいですね！
 
 > 💡 **モデルとは？**
-> ここでの「モデル」とは、AIの種類や能力のことです。例えば「gemini-2.0-flash-001」は、速度を重視したAIモデルです。用途に応じて、より賢い「gemini-2.0-pro-001」などを選ぶこともできます。
+> ここでの「モデル」とは、AIの種類や能力のことです。例えば「gemini-2.0-flash」は、速度を重視したAIモデルです。用途に応じて、より賢い「gemini-2.0-pro-001」などを選ぶこともできます。
 
 ### もう少し複雑な例
 
@@ -112,7 +142,7 @@ from google import genai
 client = genai.Client(api_key='あなたのAPIキー')
 
 response = client.models.generate_content(
-    model='gemini-2.0-flash-001',
+    model='gemini-2.0-flash',
     contents='猫と犬が友達になる短い物語を書いてください'
 )
 
@@ -154,7 +184,7 @@ import json
 api_key = 'あなたのAPIキー'
 
 # APIエンドポイント
-url = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-001:generateContent'
+url = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent'
 
 # ヘッダー
 headers = {
@@ -204,7 +234,7 @@ client = genai.Client(api_key='あなたのAPIキー')
 
 # AIに質問する
 response = client.models.generate_content(
-    model='gemini-2.0-flash-001',
+    model='gemini-2.0-flash',
     contents='空が青い理由を教えてください'
 )
 
@@ -237,7 +267,7 @@ client = genai.Client(api_key='あなたのAPIキー')
 
 # 温度を0.3に設定（安定した回答）
 response = client.models.generate_content(
-    model='gemini-2.0-flash-001',
+    model='gemini-2.0-flash',
     contents='面白い冗談を1つ教えてください',
     config=types.GenerateContentConfig(
         temperature=0.3,
@@ -259,7 +289,7 @@ print(response.text)
 ```python
 # 温度を0.9に設定（創造的な回答）
 response = client.models.generate_content(
-    model='gemini-2.0-flash-001',
+    model='gemini-2.0-flash',
     contents='面白い冗談を1つ教えてください',
     config=types.GenerateContentConfig(
         temperature=0.9,
@@ -284,7 +314,7 @@ AIの回答の長さを制限したい場合は、「max_output_tokens」を設�
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.0-flash-001',
+    model='gemini-2.0-flash',
     contents='春について詳しく説明してください',
     config=types.GenerateContentConfig(
         max_output_tokens=50,  # 約50単語の回答に制限
@@ -305,7 +335,7 @@ AIに特定の役割や振る舞いを指示したい場合は、「system_instr
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.0-flash-001',
+    model='gemini-2.0-flash',
     contents='ピザの作り方を教えてください',
     config=types.GenerateContentConfig(
         system_instruction='あなたはプロのイタリアンシェフです。料理の説明をするときは、専門的なアドバイスも含めてください。',
@@ -375,7 +405,7 @@ from google import genai
 client = genai.Client(api_key='あなたのAPIキー')
 
 # チャットセッションを作成
-chat = client.chats.create(model='gemini-2.0-flash-001')
+chat = client.chats.create(model='gemini-2.0-flash')
 
 # 最初のメッセージを送信
 response = chat.send_message('こんにちは！あなたは誰ですか？')
@@ -420,7 +450,7 @@ client = genai.Client(api_key='あなたのAPIキー')
 
 # ストリーミングを使用
 for chunk in client.models.generate_content_stream(
-    model='gemini-2.0-flash-001',
+    model='gemini-2.0-flash',
     contents='日本の四季について100字程度で説明してください'
 ):
     print(chunk.text, end='')  # 生成されたテキストを即時表示
@@ -450,7 +480,7 @@ from google import genai
 client = genai.Client(api_key='あなたのAPIキー')
 
 # チャットセッションを作成
-chat = client.chats.create(model='gemini-2.0-flash-001')
+chat = client.chats.create(model='gemini-2.0-flash')
 
 # ストリーミングを使った会話
 for chunk in chat.send_message_stream('宇宙について教えてください'):
